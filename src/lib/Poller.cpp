@@ -81,7 +81,7 @@ bool R::Poller::add(int fd, ReadReady& onReadReady, WriteReady& onWriteReady, Er
 	#if RASHEEQ_HAVE_EPOLL
 	uint32_t ep_events = EPOLLET | EPOLLIN | EPOLLOUT;
 	if (onError != NULL)
-		ep_events |= EPOLLET;
+		ep_events |= EPOLLERR;
 	::epoll_event ep_event = {
 			events: ep_events,
 			data: { fd: fd }
@@ -102,13 +102,33 @@ bool R::Poller::add(int fd, ReadReady& onReadReady, WriteReady& onWriteReady, Er
 
 extern "C" {
 
-void rasheeq_poller_poll(R::Poller* poller) {
-	poller->poll();
+int rasheeq_poller_add(rasheeq_poller_t* poller, int fd, rasheeq_readready_callback onreadready, rasheeq_writeready_callback onwriteready, rasheeq_erroroccured_callback onerror, void* user_arg) {
+	R::Poller* p = reinterpret_cast<R::Poller*>(poller);
+	if (onerror != NULL)
+		return (p->add(fd, onreadready, onwriteready, onerror, user_arg)) ? 1 : 0;
+	return (p->add(fd, onreadready, onwriteready, user_arg)) ? 1 : 0;
 };
 
-void rasheeq_poller_timed_poll(R::Poller* poller, const long timeout) {
-	poller->poll(timeout);
+rasheeq_poller_t* poller_create() {
+	return reinterpret_cast<rasheeq_poller_t*>(new R::Poller());
 };
+
+void poller_destroy(rasheeq_poller_t* poller) {
+	delete reinterpret_cast<R::Poller*>(poller);
+};
+
+void rasheeq_poller_poll(rasheeq_poller_t* poller) {
+	reinterpret_cast<R::Poller*>(poller)->poll();
+};
+
+void rasheeq_poller_timed_poll(rasheeq_poller_t* poller, const long timeout) {
+	reinterpret_cast<R::Poller*>(poller)->poll(timeout);
+};
+
+int rasheeq_poller_remove(rasheeq_poller_t* poller, int fd) {
+	return (reinterpret_cast<R::Poller*>(poller)->remove(fd)) ? 1 : 0;
+};
+
 
 }; //extern "C"
 

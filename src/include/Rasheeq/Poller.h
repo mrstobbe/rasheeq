@@ -53,8 +53,18 @@ class Poller {
 extern "C" {
 #endif /* __cplusplus */
 
-void rasheeq_poller_poll(R::Poller* poller);
-void rasheeq_poller_timed_poll(R::Poller* poller, const long timeout);
+typedef struct rasheeq_poller { } rasheeq_poller_t;
+
+typedef int(*rasheeq_readready_callback)(int fd, void* user_arg);
+typedef int(*rasheeq_writeready_callback)(int fd, void* user_arg);
+typedef void(*rasheeq_erroroccured_callback)(int fd, void* user_arg);
+
+int rasheeq_poller_add(rasheeq_poller_t* poller, int fd, rasheeq_readready_callback onreadready, rasheeq_writeready_callback onwriteready, rasheeq_erroroccured_callback onerror, void* user_arg);
+rasheeq_poller_t* poller_create();
+void poller_destroy(rasheeq_poller_t* poller);
+void rasheeq_poller_poll(rasheeq_poller_t* poller);
+void rasheeq_poller_timed_poll(rasheeq_poller_t* poller, const long timeout);
+int rasheeq_poller_remove(rasheeq_poller_t* poller, int fd);
 
 #ifdef __cplusplus
 } //extern "C"
