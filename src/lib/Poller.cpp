@@ -70,14 +70,9 @@ bool R::Poller::add(int fd, ReadReady& onReadReady, WriteReady& onWriteReady, Er
 	if (onError != NULL)
 		events |= peError;
 	auto it = this->entries_.find(fd);
-	if (it != this->entries_.end()) {
-		Entry& entry = it->second;
-		if (events == entry.events)
-			return false;
-		//#TODO: Support modification (via Entry mod and epoll_ctl as needed)
-		#warning Poller::add() -- Modification of pre-existing poller entry not yet supported
-		return true;
-	}
+	bool isMod = (it != this->entries_.end());
+	if ((isMod) && (events == it->second.events))
+		return false;
 	#if RASHEEQ_HAVE_EPOLL
 	uint32_t ep_events = EPOLLET | EPOLLIN | EPOLLOUT;
 	if (onError != NULL)
@@ -87,7 +82,7 @@ bool R::Poller::add(int fd, ReadReady& onReadReady, WriteReady& onWriteReady, Er
 			data: { fd: fd }
 		};
 	//#TODO: Test for errors
-	::epoll_ctl(this->efd_, EPOLL_CTL_ADD, entry.fd, &ep_event);
+	::epoll_ctl(this->efd_, (isMod) ? EPOLL_CTL_MOD : EPOLL_CTL_ADD, entry.fd, &ep_event);
 	#endif /* RASHEEQ_HAVE_EPOLL */
 	Entry& entry = this->entries_[fd];
 	entry.fd = fd;
