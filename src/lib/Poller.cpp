@@ -15,7 +15,7 @@ R::Poller::Poller():
 {
 	#if RASHEEQ_HAVE_EPOLL
 	//#TODO: Test for errors
-	this->efd = ::epoll_create1(0);
+	this->efd_ = ::epoll_create1(0);
 	#endif /* RASHEEQ_HAVE_EPOLL */
 };
 
@@ -25,8 +25,8 @@ R::Poller::~Poller() {
 		::close(it->first);
 	}
 	#if RASHEEQ_HAVE_EPOLL
-	::close(this->efd);
-	this->efd = -1;
+	::close(this->efd_);
+	this->efd_ = -1;
 	#endif /* RASHEEQ_HAVE_EPOLL */
 };
 
@@ -87,7 +87,7 @@ bool R::Poller::add(int fd, ReadReady& onReadReady, WriteReady& onWriteReady, Er
 			data: { fd: fd }
 		};
 	//#TODO: Test for errors
-	::epoll_ctl(this->efd, EPOLL_CTL_ADD, entry.fd, &ep_event);
+	::epoll_ctl(this->efd_, EPOLL_CTL_ADD, entry.fd, &ep_event);
 	#endif /* RASHEEQ_HAVE_EPOLL */
 	Entry& entry = this->entries_[fd];
 	entry.fd = fd;
