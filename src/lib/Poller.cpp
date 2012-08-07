@@ -82,7 +82,7 @@ bool R::Poller::add(int fd, ReadReady& onReadReady, WriteReady& onWriteReady, Er
 			data: { fd: fd }
 		};
 	//#TODO: Test for errors
-	::epoll_ctl(this->efd_, (isMod) ? EPOLL_CTL_MOD : EPOLL_CTL_ADD, entry.fd, &ep_event);
+	::epoll_ctl(this->efd_, (isMod) ? EPOLL_CTL_MOD : EPOLL_CTL_ADD, fd, &ep_event);
 	#endif /* RASHEEQ_HAVE_EPOLL */
 	Entry& entry = this->entries_[fd];
 	entry.fd = fd;
