@@ -1,0 +1,31 @@
+This software HAS NOT OFFICIALLY been released. I screamed that to make it
+clear. It's available online via github because I see no point in keeping it
+on a harddrive that could crash tomorrow. This does lead to a bit of a
+problem...
+
+Be forewarned, I haven't gotten to picking a license yet, but it will be
+either MIT style or copyleft style (think GPL).
+
+In the interum, this software is released under the following copyleft-ish
+license:
+
+Copyright (C) 2012 G.T. Stobbe
+This software and its source may be used and distributed freely, under the
+following four terms:
+1) This license and copyright notice must be retained in any distribution of
+   this software or any derived work, and must be readily accessible by any
+	end-user of any finished product.
+2) The full source of this software, or any derived works must at all times
+   be readily available to the public regardless of commercial purpose.
+3) This software is provided "as is", without warranty of any kind, express
+   or implied, including but not limited to the warranties of merchantability,
+   fitness for a particular purpose and non-infringement. In no event shall the
+	authors or copyright holders be liable for any claim, damages or other
+	liability, whether in an action of contract, tort or otherwise, arising
+	from, out of or in connection with the software or the use or other
+	dealings in the software.
+4) All derived works must have licenses which inherit all four licensing
+	requirements as defined by this agreement, including this one, without
+	modification or contradiction. Additional licensing terms which do not
+	conflict with these terms may be added at will for derivative works.
+ 
