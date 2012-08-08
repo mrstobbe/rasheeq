@@ -33,7 +33,7 @@ class Poller {
 		}; //struct Entry
 	private:
 		#if RASHEEQ_HAVE_EPOLL
-		int efd_;
+			int efd_;
 		#endif
 		std::unordered_map<int, Entry> entries_;
 		std::unordered_set<int> haveEvent_;

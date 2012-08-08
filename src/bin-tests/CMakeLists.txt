@@ -1,0 +1,6 @@
+file(GLOB sources *.cpp)
+foreach(src ${sources})
+	get_filename_component(basename ${src} NAME_WE)
+	add_executable(rasheeq-test-${basename} ${basename}.cpp)
+	target_link_libraries(rasheeq-test-${basename} rasheeq)
+endforeach()
