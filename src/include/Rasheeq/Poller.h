@@ -40,7 +40,11 @@ class Poller {
 		int timeout_;
 	public:
 		Poller();
+		Poller(const int timeout);
 		~Poller();
+	public:
+		int timeout() const;
+		void timeout(const int value);
 	public:
 		bool add(int fd, ReadReady onReadReady, WriteReady onWriteReady);
 		bool add(int fd, ReadReady onReadReady, WriteReady onWriteReady, ErrorOccurred onError);
@@ -66,10 +70,12 @@ typedef void(*rasheeq_erroroccured_callback)(int fd, void* user_arg);
 
 int rasheeq_poller_add(rasheeq_poller_t* poller, int fd, rasheeq_readready_callback onreadready, rasheeq_writeready_callback onwriteready, rasheeq_erroroccured_callback onerror, void* user_arg);
 rasheeq_poller_t* poller_create();
-void poller_destroy(rasheeq_poller_t* poller);
+void rasheeq_poller_destroy(rasheeq_poller_t* poller);
 void rasheeq_poller_poll(rasheeq_poller_t* poller);
-void rasheeq_poller_timed_poll(rasheeq_poller_t* poller, const int timeout);
 int rasheeq_poller_remove(rasheeq_poller_t* poller, int fd);
+void rasheeq_poller_timed_poll(rasheeq_poller_t* poller, const int timeout);
+int rasheeq_poller_timeout_get(rasheeq_poller_t* poller);
+int rasheeq_poller_timeout_set(rasheeq_poller_t* poller, const int timeout);
 
 #ifdef __cplusplus
 } //extern "C"

@@ -23,6 +23,20 @@ R::Poller::Poller():
 	#endif /* RASHEEQ_HAVE_EPOLL */
 };
 
+R::Poller::Poller(const int timeout):
+	#if RASHEEQ_HAVE_EPOLL
+		efd_(-1),
+	#endif /* RASHEEQ_HAVE_EPOLL */
+	entries_(),
+	haveEvent_(),
+	timeout_(timeout)
+{
+	#if RASHEEQ_HAVE_EPOLL
+		//#TODO: Test for errors
+		this->efd_ = ::epoll_create1(0);
+	#endif /* RASHEEQ_HAVE_EPOLL */
+};
+
 R::Poller::~Poller() {
 	for (auto it = this->entries_.begin(); it != this->entries_.end(); ++it) {
 		//#TODO: Support "close" event trigger
@@ -32,6 +46,14 @@ R::Poller::~Poller() {
 		::close(this->efd_);
 		this->efd_ = -1;
 	#endif /* RASHEEQ_HAVE_EPOLL */
+};
+
+int R::Poller::timeout() const {
+	return this->timeout_;
+};
+
+void R::Poller::timeout(const int value) {
+	this->timeout_ = value;
 };
 
 bool R::Poller::add(int fd, ReadReady onReadReady, WriteReady onWriteReady) {
@@ -154,7 +176,7 @@ int rasheeq_poller_add(rasheeq_poller_t* poller, int fd, rasheeq_readready_callb
 	return (p->add(fd, onreadready, onwriteready, user_arg)) ? 1 : 0;
 };
 
-rasheeq_poller_t* poller_create() {
+rasheeq_poller_t* rasheeq_poller_create() {
 	return reinterpret_cast<rasheeq_poller_t*>(new R::Poller());
 };
 
@@ -166,12 +188,22 @@ void rasheeq_poller_poll(rasheeq_poller_t* poller) {
 	reinterpret_cast<R::Poller*>(poller)->poll();
 };
 
-void rasheeq_poller_timed_poll(rasheeq_poller_t* poller, const int timeout) {
-	reinterpret_cast<R::Poller*>(poller)->poll(timeout);
-};
-
 int rasheeq_poller_remove(rasheeq_poller_t* poller, int fd) {
 	return (reinterpret_cast<R::Poller*>(poller)->remove(fd)) ? 1 : 0;
+};
+
+int rasheeq_poller_timeout_get(rasheeq_poller_t* poller) {
+	return reinterpret_cast<R::Poller*>(poller)->timeout();
+};
+
+int rasheeq_poller_timeout_set(rasheeq_poller_t* poller, const int timeout) {
+	int res = reinterpret_cast<R::Poller*>(poller)->timeout();
+	reinterpret_cast<R::Poller*>(poller)->timeout(timeout);
+	return res;
+};
+
+void rasheeq_poller_timed_poll(rasheeq_poller_t* poller, const int timeout) {
+	reinterpret_cast<R::Poller*>(poller)->poll(timeout);
 };
 
 
