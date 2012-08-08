@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include <Rasheeq/Poller.h>
 
 #include <sys/types.h>
