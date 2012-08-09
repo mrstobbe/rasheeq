@@ -53,7 +53,7 @@ static bool writeReady(int sock, void* userArg) {
 
 static void errorOccured(int sock, void* userArg) {
 	cout << "error(" << sock << ")" << endl;
-	return true;
+	poller.remove(sock);
 };
 
 int main(int argc, char** argv) {
