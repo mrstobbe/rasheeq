@@ -22,11 +22,15 @@ class TCPServer {
 		void listen(const std::string& ip, const int port);
 		void listen(const std::string& local);
 	private:
-		void bind_(fatally stubbed);
+		void bind_(void* addr, const size_t addrSize);
+		void listen_();
 		void listen_(const int backlog);
 	private:
 		TCPServer(const TCPServer& copy) { };
 		TCPServer& operator =(const TCPServer& copy) { return *this; };
+	private:
+		static bool onReadReady(int fd, TCPServer* server);
+		static bool onWriteReady(int fd, TCPServer* server);
 }; //class TCPServer
 
 }; //ns R
@@ -41,6 +45,8 @@ int main(int argc, char** argv) {
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <fcntl.h>
+#include <unistd.h>
 
 R::TCPServer::TCPServer(R::Poller* poller):
 	fd_(-1),
@@ -49,9 +55,6 @@ R::TCPServer::TCPServer(R::Poller* poller):
 {
 	//#TODO: This should be lazy-init so that the AF can be determined via what's passed to listen()
 	/*
-	this->fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
-	//Obviously those lambdas are just stubs
-	poller->add(this->fd_, [](int fd, void*)->bool { return true; }, [](int fd, void*)->bool { return true; });
 	*/
 };
 
@@ -73,45 +76,59 @@ R::TCPServer::~TCPServer() {
 
 void R::TCPServer::listen(const int port) {
 	::sockaddr_in addr = {
-			sin_af: AF_INET,
-			sin_port: ::htons(port),
+			sin_family: AF_INET,
+			sin_port: htons(port),
 			sin_addr: { s_addr: 0 }
 		};
-	this->bind_(reinterpret_cast<const sockaddr*>(&addr), sizeof(addr));
+	this->bind_(&addr, sizeof(addr));
 	this->listen_();
 };
 
 void R::TCPServer::listen(const bool ip6, const int port) {
-	#error Left off here. This concept will fatal as it stands (baddr will deinit after if block)
-	//#TODO: Rewrite
-	sockaddr* addr = NULL;
 	if (ip6) {
-		::sockaddr_in baddr = {
-				sin_af: AF_INET,
-				sin_port: ::htons(port),
+		::sockaddr_in6 addr = {
+				sin6_family: AF_INET6,
+				sin6_port: htons(port),
+				sin6_flowinfo: 0,
+				sin6_addr: IN6ADDR_ANY_INIT,
+				sin6_scope_id: 0
+			};
+		this->bind_(&addr, sizeof(addr));
+	} else {
+		::sockaddr_in addr = {
+				sin_family: AF_INET,
+				sin_port: htons(port),
 				sin_addr: { s_addr: 0 }
 			};
-	} else {
-		::sockaddr_in6 baddr = {
-				sin6_af: AF_INET6,
-				sin6_port: ::htons(port),
-				sin6_addr: IN6ADDR_ANY_INIT,
-				sin6_flowinfo: { 0 },
-				sin6_scope_id: { 0 }
-			};
+		this->bind_(&addr, sizeof(addr));
 	}
-	this->bind_(reinterpret_cast<const sockaddr*>(&addr), sizeof(addr));
 	this->listen_();
 };
 
 void R::TCPServer::listen(const std::string& ip, const int port) {
-	this->bind_(reinterpret_cast<const sockaddr*>(&addr), sizeof(addr));
-	this->listen_();
+	#warning Not implemented
 };
 
 void R::TCPServer::listen(const std::string& local) {
-	this->bind_(reinterpret_cast<const sockaddr*>(&addr), sizeof(addr));
-	this->listen_();
+	#warning Not implemented
+};
+
+void R::TCPServer::bind_(void* addr, const size_t addrSize) {
+	this->fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
+	#warning Obviously those lambdas one line down are just stubs
+	this->poller_->add(this->fd_, [](int fd, void*)->bool { return true; }, [](int fd, void*)->bool { return true; });
+	int v = ::fcntl(this->fd_, F_GETFL, 0);
+	::fcntl(this->fd_, F_SETFL, v | O_NONBLOCK);
+	v = 1;
+	::setsockopt(this->fd_, SOL_SOCKET, SO_REUSEADDR, &v, sizeof(v));
+};
+
+void R::TCPServer::listen_() {
+	::listen(this->fd_, SOMAXCONN);
+};
+
+void R::TCPServer::listen_(const int backlog) {
+	::listen(this->fd_, backlog);
 };
 
 R::TCPServer& R::TCPServer::operator =(TCPServer&& move) {
@@ -124,5 +141,20 @@ R::TCPServer& R::TCPServer::operator =(TCPServer&& move) {
 		move.poller_ = NULL;
 	}
 	return *this;
+};
+
+bool R::TCPServer::onReadReady(int fd, TCPServer* server) {
+	int cli = ::accept(fd, NULL, NULL);
+	if (cli == -1)
+		return true;
+	//#TODO: Do something with the client
+	//#TODO: Support greedy (loop until would block)
+	#warning Stubbed. Obviously this should not close
+	::close(cli);
+	return false;
+};
+
+bool R::TCPServer::onWriteReady(int fd, TCPServer* server) {
+	return true;
 };
 
