@@ -16,6 +16,7 @@ static R::Poller poller;
 
 static bool writeReady(int sock, void* userArg);
 static bool readReady(int sock, void* userArg);
+static void errorOccured(int sock, void* userArg);
 
 static bool readReady(int sock, void* userArg) {
 	cout << "readReady(" << sock << ")" << endl;
@@ -27,7 +28,7 @@ static bool readReady(int sock, void* userArg) {
 		cout << inet_ntoa(paddr.sin_addr) << " connected." << endl;
 		int v = fcntl(cli, F_GETFL, 0);
 		fcntl(cli, F_SETFL, v | O_NONBLOCK);
-		poller.add(cli, readReady, writeReady, userArg);
+		poller.add(cli, readReady, writeReady, errorOccured, userArg);
 	} else {
 		char buf[512];
 		int res = recv(sock, buf, 512, 0);
@@ -47,6 +48,11 @@ static bool readReady(int sock, void* userArg) {
 
 static bool writeReady(int sock, void* userArg) {
 	cout << "writeReady(" << sock << ")" << endl;
+	return true;
+};
+
+static void errorOccured(int sock, void* userArg) {
+	cout << "error(" << sock << ")" << endl;
 	return true;
 };
 
