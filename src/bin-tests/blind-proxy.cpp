@@ -29,8 +29,8 @@ class TCPServer {
 		TCPServer(const TCPServer& copy) { };
 		TCPServer& operator =(const TCPServer& copy) { return *this; };
 	private:
-		static bool onReadReady(int fd, TCPServer* server);
-		static bool onWriteReady(int fd, TCPServer* server);
+		static bool onReadReady(int fd, void* arg);
+		static bool onWriteReady(int fd, void* arg);
 }; //class TCPServer
 
 }; //ns R
@@ -53,9 +53,6 @@ R::TCPServer::TCPServer(R::Poller* poller):
 	greedy_(false),
 	poller_(poller)
 {
-	//#TODO: This should be lazy-init so that the AF can be determined via what's passed to listen()
-	/*
-	*/
 };
 
 R::TCPServer::TCPServer(TCPServer&& move):
@@ -116,7 +113,7 @@ void R::TCPServer::listen(const std::string& local) {
 void R::TCPServer::bind_(void* addr, const size_t addrSize) {
 	this->fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
 	#warning Obviously those lambdas one line down are just stubs
-	this->poller_->add(this->fd_, [](int fd, void*)->bool { return true; }, [](int fd, void*)->bool { return true; });
+	this->poller_->add(this->fd_, onReadReady, onWriteReady, this);
 	int v = ::fcntl(this->fd_, F_GETFL, 0);
 	::fcntl(this->fd_, F_SETFL, v | O_NONBLOCK);
 	v = 1;
@@ -143,7 +140,8 @@ R::TCPServer& R::TCPServer::operator =(TCPServer&& move) {
 	return *this;
 };
 
-bool R::TCPServer::onReadReady(int fd, TCPServer* server) {
+bool R::TCPServer::onReadReady(int fd, void* arg) {
+	TCPServer* server = reinterpret_cast<TCPServer*>(arg);
 	int cli = ::accept(fd, NULL, NULL);
 	if (cli == -1)
 		return true;
@@ -154,7 +152,7 @@ bool R::TCPServer::onReadReady(int fd, TCPServer* server) {
 	return false;
 };
 
-bool R::TCPServer::onWriteReady(int fd, TCPServer* server) {
+bool R::TCPServer::onWriteReady(int fd, void* arg) {
 	return true;
 };
 
