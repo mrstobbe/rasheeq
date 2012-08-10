@@ -18,9 +18,9 @@ class Poller {
 			peWrite = 0x02,
 			peError = 0x04
 		}; //enum Events
-		typedef std::function<bool(int, void*)> ReadReady;
-		typedef std::function<bool(int, void*)> WriteReady;
-		typedef std::function<void(int, void*)> ErrorOccurred;
+		typedef std::function<bool(Poller* sender, int, void*)> ReadReady;
+		typedef std::function<bool(Poller* sender, int, void*)> WriteReady;
+		typedef std::function<void(Poller* sender, int, void*)> ErrorOccurred;
 	protected:
 		struct Entry {
 			int fd;
@@ -64,9 +64,9 @@ extern "C" {
 
 typedef struct rasheeq_poller { } rasheeq_poller_t;
 
-typedef int(*rasheeq_readready_callback)(int fd, void* user_arg);
-typedef int(*rasheeq_writeready_callback)(int fd, void* user_arg);
-typedef void(*rasheeq_erroroccured_callback)(int fd, void* user_arg);
+typedef int(*rasheeq_readready_callback)(rasheeq_poller_t* poller, int fd, void* user_arg);
+typedef int(*rasheeq_writeready_callback)(rasheeq_poller_t* poller, int fd, void* user_arg);
+typedef void(*rasheeq_erroroccured_callback)(rasheeq_poller_t* poller, int fd, void* user_arg);
 
 int rasheeq_poller_add(rasheeq_poller_t* poller, int fd, rasheeq_readready_callback onreadready, rasheeq_writeready_callback onwriteready, rasheeq_erroroccured_callback onerror, void* user_arg);
 rasheeq_poller_t* poller_create();
