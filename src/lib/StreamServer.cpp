@@ -6,12 +6,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-R::StreamServer::StreamServer(R::PollerPool* pool):
+R::StreamServer::StreamServer(R::PollerPool& pool):
 	clients_(),
 	fd_(-1),
 	greedy_(false),
 	poller_(NULL),
-	pool_(pool),
+	pool_(&pool),
 	userData_(NULL),
 	onClientConnect_(),
 	onClientDisconnect_(),

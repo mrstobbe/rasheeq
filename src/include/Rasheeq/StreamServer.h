@@ -29,7 +29,7 @@ class StreamServer {
 		std::list<ClientDisconnected> onClientDisconnect_;
 		std::list<Destructing> onDestruct_;
 	public:
-		StreamServer(PollerPool* pool);
+		StreamServer(PollerPool& pool);
 		StreamServer(StreamServer&& move);
 		~StreamServer();
 	public:
