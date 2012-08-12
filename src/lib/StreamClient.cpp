@@ -23,7 +23,9 @@ R::StreamClient::StreamClient(PollerPool& pool, StreamServer& server, int fd):
 	onConnect_(),
 	onDestruct_(),
 	onDisconnect_(),
-	onReceivedData_()
+	onDisconnecting_(),
+	onReceivedData_(),
+	onWriteDataReady_()
 {
 	int v = ::fcntl(this->fd_, F_GETFL, 0);
 	::fcntl(this->fd_, F_SETFL, v | O_NONBLOCK);
@@ -40,7 +42,9 @@ R::StreamClient::StreamClient(StreamClient&& move):
 	onConnect_(std::move(move.onConnect_)),
 	onDestruct_(std::move(move.onDestruct_)),
 	onDisconnect_(std::move(move.onDisconnect_)),
-	onReceivedData_(std::move(move.onReceivedData_))
+	onDisconnecting_(std::move(move.onDisconnecting_)),
+	onReceivedData_(std::move(move.onReceivedData_)),
+	onWriteDataReady_(std::move(move.onWriteDataReady_))
 {
 	move.fd_ = -1;
 	move.poller_ = NULL;
@@ -62,6 +66,35 @@ R::StreamClient::~StreamClient() {
 	}
 };
 
+bool R::StreamClient::isConnected() const {
+	return ((this->state_ == scsConnected) && (this->state_ == scsDisconnecting));
+};
+
+bool R::StreamClient::isConnecting() const {
+	return (this->state_ == scsConnecting);
+};
+
+bool R::StreamClient::isDisconnected() const {
+	return (this->state_ == scsDisconnected);
+};
+
+bool R::StreamClient::isDisconnecting() const {
+	return (this->state_ == scsDisconnecting);
+};
+
+R::StreamClient::State R::StreamClient::state() const {
+	return this->state_;
+};
+
+void* R::StreamClient::userData() const {
+	return this->userData_;
+};
+
+void R::StreamClient::userData(void* value) {
+	this->userData_ = value;
+};
+
+
 bool R::StreamClient::flush() {
 	if (this->outBuf_.size() == 0)
 		return true;
@@ -70,6 +103,7 @@ bool R::StreamClient::flush() {
 
 void R::StreamClient::disconnect() {
 	if (this->fd_ != -1) {
+		::shutdown(this->fd_, SHUT_RDWR);
 		this->poller_->remove(this->fd_);
 		this->fd_ = -1;
 		this->state_ = scsDisconnected;
@@ -101,6 +135,30 @@ bool R::StreamClient::send(const std::string& data) {
 	return (this->outBuf_.size() == 0);
 };
 
+void R::StreamClient::onConnect(const Connected& callback) {
+	this->onConnect_.push_back(callback);
+};
+
+void R::StreamClient::onDestruct(const Destructing& callback) {
+	this->onDestruct_.push_back(callback);
+};
+
+void R::StreamClient::onDisconnecting(const Disconnecting& callback) {
+	this->onDisconnecting_.push_back(callback);
+};
+
+void R::StreamClient::onDisconnect(const Disconnected& callback) {
+	this->onDisconnect_.push_back(callback);
+};
+
+void R::StreamClient::onReceivedData(const ReceivedData& callback) {
+	this->onReceivedData_.push_back(callback);
+};
+
+void R::StreamClient::onWriteDataReady(const WriteDataReady& callback) {
+	this->onWriteDataReady_.push_back(callback);
+};
+
 bool R::StreamClient::onReadReady_(Poller& poller, int fd, void* arg) {
 	StreamClient* client = reinterpret_cast<StreamClient*>(arg);
 	char buf[R::StreamClient::bufferSize];
@@ -117,6 +175,8 @@ bool R::StreamClient::onReadReady_(Poller& poller, int fd, void* arg) {
 		return true;
 	} else if (res == 0) {
 		client->state_ = scsDisconnecting;
+		for (auto it = client->onDisconnecting_.begin(); it != client->onDisconnecting_.end(); ++it)
+			(*it)(*client);
 		return true;
 	} else {
 		size_t offs = client->inBuf_.size();
@@ -135,6 +195,9 @@ bool R::StreamClient::onWriteReady_(Poller& poller, int fd, void* arg) {
 		for (auto it = client->onConnect_.begin(); it != client->onConnect_.end(); ++it)
 			(*it)(*client);
 	}
+	for (auto it = client->onWriteDataReady_.begin(); it != client->onWriteDataReady_.end(); ++it)
+		(*it)(*client, client->outBuf_);
+
 	if (client->outBuf_.size() == 0)
 		return true;
 

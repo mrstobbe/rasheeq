@@ -23,6 +23,7 @@ class StreamClient {
 		typedef std::function<void(StreamClient& client)> Disconnected;
 		typedef std::function<void(StreamClient& client)> Disconnecting;
 		typedef std::function<void(StreamClient& client, std::string& data, size_t& offset, size_t& size)> ReceivedData;
+		typedef std::function<void(StreamClient& client, std::string& outBuffer)> WriteDataReady;
 	public:
 		static size_t bufferSize;
 	protected:
@@ -37,16 +38,33 @@ class StreamClient {
 		std::list<Connected> onConnect_;
 		std::list<Destructing> onDestruct_;
 		std::list<Disconnected> onDisconnect_;
+		std::list<Disconnecting> onDisconnecting_;
 		std::list<ReceivedData> onReceivedData_;
+		std::list<WriteDataReady> onWriteDataReady_;
 	protected:
 		StreamClient(PollerPool& pool, StreamServer& server, int fd);
 	public:
 		StreamClient(StreamClient&& move);
 		~StreamClient();
 	public:
+		bool isConnected() const;
+		bool isConnecting() const;
+		bool isDisconnected() const;
+		bool isDisconnecting() const;
+		State state() const;
+		void* userData() const;
+		void userData(void* value);
+	public:
 		bool flush();
 		void disconnect();
 		bool send(const std::string& data);
+	public:
+		void onConnect(const Connected& callback);
+		void onDestruct(const Destructing& callback);
+		void onDisconnecting(const Disconnecting& callback);
+		void onDisconnect(const Disconnected& callback);
+		void onReceivedData(const ReceivedData& callback);
+		void onWriteDataReady(const WriteDataReady& callback);
 	private:
 		static bool onReadReady_(Poller& poller, int fd, void* arg);
 		static bool onWriteReady_(Poller& poller, int fd, void* arg);

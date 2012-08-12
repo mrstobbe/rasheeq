@@ -10,11 +10,14 @@
 int R::Poller::maxPerPoll = 64;
 
 R::Poller::Poller():
+	addReady_(),
 	#if RASHEEQ_HAVE_EPOLL
 		efd_(-1),
 	#endif /* RASHEEQ_HAVE_EPOLL */
 	entries_(),
 	haveEvent_(),
+	polling_(false),
+	reapReady_(),
 	timeout_(0)
 {
 	#if RASHEEQ_HAVE_EPOLL
@@ -24,11 +27,13 @@ R::Poller::Poller():
 };
 
 R::Poller::Poller(const int timeout):
+	addReady_(),
 	#if RASHEEQ_HAVE_EPOLL
 		efd_(-1),
 	#endif /* RASHEEQ_HAVE_EPOLL */
 	entries_(),
 	haveEvent_(),
+	reapReady_(),
 	timeout_(timeout)
 {
 	#if RASHEEQ_HAVE_EPOLL
@@ -77,42 +82,67 @@ bool R::Poller::add(int fd, ReadReady onReadReady, WriteReady onWriteReady, Erro
 };
 
 void R::Poller::poll(const int timeout) {
-	for (auto it = this->haveEvent_.begin(); it != this->haveEvent_.end(); ++it) {
-		Entry& entry = this->entries_[*it];
-		if (((entry.activeEvents & peWrite) != 0) && (entry.onWrite(*this, entry.fd, entry.userArg)))
-			entry.activeEvents ^= peWrite;
-		if (((entry.activeEvents & peRead) != 0) && (entry.onRead(*this, entry.fd, entry.userArg)))
-			entry.activeEvents ^= peRead;
-		if (entry.activeEvents == 0)
-			this->haveEvent_.erase(it);
+	this->polling_ = true;
+	if (this->reapReady_.size() != 0) {
+		for (auto it = this->reapReady_.begin(); it != this->reapReady_.end(); ++it) {
+			this->haveEvent_.erase(*it);
+			this->entries_.erase(*it);
+		}
+		this->reapReady_.clear();
+	}
+
+	if (this->addReady_.size() != 0) {
+		for (auto it = this->addReady_.begin(); it != this->addReady_.end(); ++it) {
+			this->entries_[it->first] = it->second;
+			#if RASHEEQ_HAVE_EPOLL
+				uint32_t ep_events = EPOLLET | EPOLLIN | EPOLLOUT;
+				if ((it->second.events & peError) != 0)
+					ep_events |= EPOLLERR;
+				::epoll_event ep_event = {
+						events: ep_events,
+						data: { fd: it->first }
+					};
+				//#TODO: Test for errors
+				if (::epoll_ctl(this->efd_, EPOLL_CTL_ADD, it->first, &ep_event) == -1)
+					perror("epoll_ctl()");
+			#endif /* RASHEEQ_HAVE_EPOLL */
+		}
+		this->addReady_.clear();
+	}
+
+	if (this->haveEvent_.size() != 0) {
+		std::unordered_set<int> reap;
+		for (auto it = this->haveEvent_.begin(); it != this->haveEvent_.end(); ++it) {
+			Entry& entry = this->entries_[*it];
+			if (((entry.activeEvents & peWrite) != 0) && (entry.onWrite(*this, entry.fd, entry.userArg)))
+				entry.activeEvents ^= peWrite;
+			if (((entry.activeEvents & peRead) != 0) && (entry.onRead(*this, entry.fd, entry.userArg)))
+				entry.activeEvents ^= peRead;
+			if (entry.activeEvents == 0)
+				reap.insert(*it);
+				//it = this->haveEvent_.erase(it);
+		}
+		for (auto it = reap.begin(); it != reap.end(); ++it)
+			this->haveEvent_.erase(*it);
 	}
 
 	#if RASHEEQ_HAVE_EPOLL
 		::epoll_event events[R::Poller::maxPerPoll];
 		int res = ::epoll_wait(this->efd_, events, R::Poller::maxPerPoll, timeout);
-		if ((res == 0) || ((res == -1) && (errno == EINTR)))
+		if ((res == 0) || ((res == -1) && (errno == EINTR))) {
+			this->polling_ = false;
 			return;
-		if (res == -1) {
+		} else if (res == -1) {
 			//#TODO: Handle unexpected errors
+			this->polling_ = false;
 			return;
 		}
 		for (int i = 0; i < res; ++i) {
-			#if RASHEEQ_DEBUG_BUILD
-				//Same complexity as the release version, but with branching.
-				//None of these if conditions should evalutate as true, so these are
-				//really assertions for test purposes.
-				auto eit = this->entries_.find(events[i].data.fd);
-				if ((eit == this->entries_.end()) || (((events[i].events & EPOLLERR) != 0) && ((peError & entry.events) == 0))) {
-					//#TODO: Fatal here
-					continue;
-				}
-				Entry& entry = eit->second;
-			#else
-				Entry& entry = this->entries_[events[i].data.fd];
-			#endif /* RASHEEQ_DEBUG_BUILD */
+			int fd = events[i].data.fd;
+			Entry& entry = this->entries_[fd];
 			if (((events[i].events & EPOLLERR) != 0) && ((entry.events & peError) != 0)) {
 				entry.onError(*this, entry.fd, entry.userArg);
-				if (this->entries_.find(events[i].data.fd) == this->entries_.end())
+				if (this->reapReady_.find(events[i].data.fd) != this->reapReady_.end())
 					continue;
 			}
 			int oactive = entry.activeEvents;
@@ -126,44 +156,36 @@ void R::Poller::poll(const int timeout) {
 	#else
 		//#TODO: kpoll/win32 api/fallback on select(), etc
 	#endif /* RASHEEQ_HAVE_EPOLL */
+	this->polling_ = false;
 };
 
 bool R::Poller::remove(int fd) {
 	auto it = this->entries_.find(fd);
 	if (it == this->entries_.end())
 		return false;
-	this->haveEvent_.erase(fd);
-	//#TODO: Support "close" event trigger
-	this->entries_.erase(it);
+	if (this->reapReady_.find(fd) != this->reapReady_.end())
+		return false;
 	::close(fd);
+	if (this->polling_) {
+		this->reapReady_.insert(fd);
+	} else {
+		this->haveEvent_.erase(fd);
+		this->entries_.erase(fd);
+	}
 	return true;
 };
 
 
 bool R::Poller::add(int fd, ReadReady& onReadReady, WriteReady& onWriteReady, ErrorOccurred* onError, void* userArg) {
+	if ((this->entries_.find(fd) != this->entries_.end()) || (this->addReady_.find(fd) != this->addReady_.end()))
+		return false;
 	int events = peRead | peWrite;
 	if (onError != NULL)
 		events |= peError;
-	auto it = this->entries_.find(fd);
-	bool isMod = (it != this->entries_.end());
-	if ((isMod) && (events == it->second.events))
-		return false;
-	#if RASHEEQ_HAVE_EPOLL
-		uint32_t ep_events = EPOLLET | EPOLLIN | EPOLLOUT;
-		if (onError != NULL)
-			ep_events |= EPOLLERR;
-		::epoll_event ep_event = {
-				events: ep_events,
-				data: { fd: fd }
-			};
-		//#TODO: Test for errors
-		::epoll_ctl(this->efd_, (isMod) ? EPOLL_CTL_MOD : EPOLL_CTL_ADD, fd, &ep_event);
-	#endif /* RASHEEQ_HAVE_EPOLL */
-	Entry& entry = this->entries_[fd];
+	Entry& entry = this->addReady_[fd];
 	entry.fd = fd;
 	entry.events = events;
-	if (!isMod)
-		entry.activeEvents = 0;
+	entry.activeEvents = 0;
 	entry.onRead = onReadReady;
 	entry.onWrite = onWriteReady;
 	entry.onError = (onError != NULL) ? *onError : ErrorOccurred();

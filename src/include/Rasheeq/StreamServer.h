@@ -5,7 +5,7 @@
 
 #include <string>
 #include <list>
-#include <unordered_map>
+#include <unordered_set>
 #include <functional>
 
 namespace R {
@@ -14,15 +14,16 @@ class StreamServer {
 	friend class StreamClient;
 	public:
 		typedef std::function<void(StreamServer& server, StreamClient& client)> ClientAccepted;
-		typedef std::function<bool(StreamServer& server, StreamClient& client)> ClientConnected;
+		typedef std::function<void(StreamServer& server, StreamClient& client)> ClientConnected;
 		typedef std::function<void(StreamServer& server, StreamClient& client)> ClientDisconnected;
 		typedef std::function<void(StreamServer& server)> Destructing;
 	protected:
-		std::unordered_map<int, StreamClient*> clients_;
+		std::unordered_set<StreamClient*> clients_;
 		int fd_;
 		bool greedy_;
 		Poller* poller_;
 		PollerPool* pool_;
+		std::unordered_set<StreamClient*> reapReady_;
 		void* userData_;
 	protected:
 		std::list<ClientConnected> onClientConnect_;
@@ -37,6 +38,10 @@ class StreamServer {
 		void listen(const bool ip6, const unsigned int port);
 		void listen(const std::string& interface, const unsigned int port);
 		void listen(const std::string& interface);
+	public:
+		void onClientConnect(const ClientConnected& callback);
+		void onClientDisconnect(const ClientDisconnected& callback);
+		void onDestruct(const Destructing& callback);
 	private:
 		void bind_(void* addr, const size_t addrSize);
 		void listen_();

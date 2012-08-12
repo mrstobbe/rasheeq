@@ -32,11 +32,14 @@ class Poller {
 			void* userArg;
 		}; //struct Entry
 	private:
+		std::unordered_map<int, Entry> addReady_;
 		#if RASHEEQ_HAVE_EPOLL
 			int efd_;
 		#endif
 		std::unordered_map<int, Entry> entries_;
 		std::unordered_set<int> haveEvent_;
+		bool polling_;
+		std::unordered_set<int> reapReady_;
 		int timeout_;
 	public:
 		Poller();
