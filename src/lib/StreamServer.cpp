@@ -35,6 +35,8 @@ R::StreamServer::StreamServer(StreamServer&& move):
 
 R::StreamServer::~StreamServer() {
 	if (this->fd_ != -1) {
+		for (auto it = this->clients_.begin(); it != this->clients_.end(); it = this->clients_.begin())
+			it->second->disconnect();
 		for (auto it = this->onDestruct_.begin(); it != this->onDestruct_.end(); ++it)
 			(*it)(*this);
 		this->poller_->remove(this->fd_);
