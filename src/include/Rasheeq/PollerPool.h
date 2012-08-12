@@ -11,8 +11,10 @@ class PollerPool {
 	protected:
 		std::unordered_set<Poller*> pollers_;
 		unsigned int randSeed_;
+		int timeout_;
 	public:
 		PollerPool();
+		PollerPool(const int timeout);
 		~PollerPool();
 	public:
 		Poller* add(int fd, Poller::ReadReady onReadReady, Poller::WriteReady onWriteReady);
@@ -20,6 +22,7 @@ class PollerPool {
 		Poller* add(int fd, Poller::ReadReady onReadReady, Poller::WriteReady onWriteReady, void* userArg);
 		Poller* add(int fd, Poller::ReadReady onReadReady, Poller::WriteReady onWriteReady, Poller::ErrorOccurred onError, void* userArg);
 		Poller* createPoller();
+		Poller* createPoller(const int timeout);
 	private:
 		Poller* add(int fd, Poller::ReadReady& onReadReady, Poller::WriteReady& onWriteReady, Poller::ErrorOccurred* onError, void* userArg);
 	private:
