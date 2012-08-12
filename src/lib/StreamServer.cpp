@@ -3,6 +3,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netinet/in.h>
+#if RASHEEQ_HAVE_SCTP
+	#include <netinet/sctp.h>
+#endif
 #include <fcntl.h>
 #include <unistd.h>
 
