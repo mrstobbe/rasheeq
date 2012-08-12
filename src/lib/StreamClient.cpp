@@ -62,6 +62,12 @@ R::StreamClient::~StreamClient() {
 	}
 };
 
+bool R::StreamClient::flush() {
+	if (this->outBuf_.size() == 0)
+		return true;
+	return this->send(std::string());
+};
+
 void R::StreamClient::disconnect() {
 	if (this->fd_ != -1) {
 		this->poller_->remove(this->fd_);
@@ -74,7 +80,7 @@ void R::StreamClient::disconnect() {
 	}
 };
 
-void R::StreamClient::send(const std::string& data) {
+bool R::StreamClient::send(const std::string& data) {
 	this->outBuf_.append(data);
 	size_t size = this->outBuf_.size();
 	if (size > R::StreamClient::bufferSize)
@@ -88,11 +94,11 @@ void R::StreamClient::send(const std::string& data) {
 			//#TODO: Handle errors appropriately
 			this->disconnect();
 		}
-		return;
+		return (this->outBuf_.size() == 0);
 	}
 	if (res != 0)
 		this->outBuf_.erase(0, res);
-	return;
+	return (this->outBuf_.size() == 0);
 };
 
 bool R::StreamClient::onReadReady_(Poller& poller, int fd, void* arg) {

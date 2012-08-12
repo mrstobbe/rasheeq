@@ -44,8 +44,9 @@ class StreamClient {
 		StreamClient(StreamClient&& move);
 		~StreamClient();
 	public:
+		bool flush();
 		void disconnect();
-		void send(const std::string& data);
+		bool send(const std::string& data);
 	private:
 		static bool onReadReady_(Poller& poller, int fd, void* arg);
 		static bool onWriteReady_(Poller& poller, int fd, void* arg);
