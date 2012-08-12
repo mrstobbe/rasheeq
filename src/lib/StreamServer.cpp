@@ -48,7 +48,7 @@ R::StreamServer::~StreamServer() {
 	}
 };
 
-void R::StreamServer::listen(const int port) {
+void R::StreamServer::listen(const unsigned int port) {
 	::sockaddr_in addr = {
 			sin_family: AF_INET,
 			sin_port: htons(port),
@@ -58,7 +58,7 @@ void R::StreamServer::listen(const int port) {
 	this->listen_();
 };
 
-void R::StreamServer::listen(const bool ip6, const int port) {
+void R::StreamServer::listen(const bool ip6, const unsigned int port) {
 	if (ip6) {
 		::sockaddr_in6 addr = {
 				sin6_family: AF_INET6,
@@ -79,16 +79,17 @@ void R::StreamServer::listen(const bool ip6, const int port) {
 	this->listen_();
 };
 
-void R::StreamServer::listen(const std::string& interface, const int port) {
+void R::StreamServer::listen(const std::string& interface, const unsigned int port) {
 	#warning Not implemented
 };
 
-void R::StreamServer::listen(const std::string& local) {
+void R::StreamServer::listen(const std::string& interface) {
 	#warning Not implemented
 };
 
 void R::StreamServer::bind_(void* addr, const size_t addrSize) {
-	this->fd_ = ::socket(AF_INET, SOCK_STREAM, 0);
+	//#TODO: Support AF_INET6, AF_UNIX, and IPPROTO_SCTP here
+	this->fd_ = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	int v = ::fcntl(this->fd_, F_GETFL, 0);
 	::fcntl(this->fd_, F_SETFL, v | O_NONBLOCK);
 	v = 1;

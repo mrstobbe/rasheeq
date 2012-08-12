@@ -33,10 +33,10 @@ class StreamServer {
 		StreamServer(StreamServer&& move);
 		~StreamServer();
 	public:
-		void listen(const int port);
-		void listen(const bool ip6, const int port);
-		void listen(const std::string& interface, const int port);
-		void listen(const std::string& local);
+		void listen(const unsigned int port);
+		void listen(const bool ip6, const unsigned int port);
+		void listen(const std::string& interface, const unsigned int port);
+		void listen(const std::string& interface);
 	private:
 		void bind_(void* addr, const size_t addrSize);
 		void listen_();
