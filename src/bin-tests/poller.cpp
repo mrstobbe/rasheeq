@@ -13,11 +13,11 @@
 using namespace std;
 
 
-static bool writeReady(R::Poller* poller, int sock, void* userArg);
-static bool readReady(R::Poller* poller, int sock, void* userArg);
-static void errorOccured(R::Poller* poller, int sock, void* userArg);
+static bool writeReady(R::Poller& poller, int sock, void* userArg);
+static bool readReady(R::Poller& poller, int sock, void* userArg);
+static void errorOccured(R::Poller& poller, int sock, void* userArg);
 
-static bool readReady(R::Poller* poller, int sock, void* userArg) {
+static bool readReady(R::Poller& poller, int sock, void* userArg) {
 	cout << "readReady(" << sock << ")" << endl;
 	int& listener = *reinterpret_cast<int*>(userArg);
 	if (sock == listener) {
@@ -27,7 +27,7 @@ static bool readReady(R::Poller* poller, int sock, void* userArg) {
 		cout << inet_ntoa(paddr.sin_addr) << " connected." << endl;
 		int v = fcntl(cli, F_GETFL, 0);
 		fcntl(cli, F_SETFL, v | O_NONBLOCK);
-		poller->add(cli, readReady, writeReady, errorOccured, userArg);
+		poller.add(cli, readReady, writeReady, errorOccured, userArg);
 	} else {
 		char buf[512];
 		int res = recv(sock, buf, 512, 0);
@@ -39,20 +39,20 @@ static bool readReady(R::Poller* poller, int sock, void* userArg) {
 			socklen_t paddr_len = sizeof(paddr);
 			getpeername(sock, reinterpret_cast<sockaddr*>(&paddr), &paddr_len);
 			cout << inet_ntoa(paddr.sin_addr) << " disconnected." << endl;
-			poller->remove(sock);
+			poller.remove(sock);
 		}
 	}
 	return true;
 };
 
-static bool writeReady(R::Poller* poller, int sock, void* userArg) {
+static bool writeReady(R::Poller& poller, int sock, void* userArg) {
 	cout << "writeReady(" << sock << ")" << endl;
 	return true;
 };
 
-static void errorOccured(R::Poller* poller, int sock, void* userArg) {
+static void errorOccured(R::Poller& poller, int sock, void* userArg) {
 	cout << "error(" << sock << ")" << endl;
-	poller->remove(sock);
+	poller.remove(sock);
 };
 
 int main(int argc, char** argv) {

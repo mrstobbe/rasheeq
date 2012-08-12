@@ -1,4 +1,4 @@
-#include "Rasheeq/Poller.h"
+#include "Rasheeq.h"
 
 #include <cerrno>
 #include <unistd.h>
@@ -79,9 +79,9 @@ bool R::Poller::add(int fd, ReadReady onReadReady, WriteReady onWriteReady, Erro
 void R::Poller::poll(const int timeout) {
 	for (auto it = this->haveEvent_.begin(); it != this->haveEvent_.end(); ++it) {
 		Entry& entry = this->entries_[*it];
-		if (((entry.activeEvents & peWrite) != 0) && (entry.onWrite(this, entry.fd, entry.userArg)))
+		if (((entry.activeEvents & peWrite) != 0) && (entry.onWrite(*this, entry.fd, entry.userArg)))
 			entry.activeEvents ^= peWrite;
-		if (((entry.activeEvents & peRead) != 0) && (entry.onRead(this, entry.fd, entry.userArg)))
+		if (((entry.activeEvents & peRead) != 0) && (entry.onRead(*this, entry.fd, entry.userArg)))
 			entry.activeEvents ^= peRead;
 		if (entry.activeEvents == 0)
 			this->haveEvent_.erase(it);
@@ -111,14 +111,14 @@ void R::Poller::poll(const int timeout) {
 				Entry& entry = this->entries_[events[i].data.fd];
 			#endif /* RASHEEQ_DEBUG_BUILD */
 			if (((events[i].events & EPOLLERR) != 0) && ((entry.events & peError) != 0)) {
-				entry.onError(this, entry.fd, entry.userArg);
+				entry.onError(*this, entry.fd, entry.userArg);
 				if (this->entries_.find(events[i].data.fd) == this->entries_.end())
 					continue;
 			}
 			int oactive = entry.activeEvents;
-			if (((events[i].events & EPOLLOUT) != 0) && (!entry.onWrite(this, entry.fd, entry.userArg)))
+			if (((events[i].events & EPOLLOUT) != 0) && (!entry.onWrite(*this, entry.fd, entry.userArg)))
 				entry.activeEvents |= peWrite;
-			if (((events[i].events & EPOLLIN) != 0) && (!entry.onRead(this, entry.fd, entry.userArg)))
+			if (((events[i].events & EPOLLIN) != 0) && (!entry.onRead(*this, entry.fd, entry.userArg)))
 				entry.activeEvents |= peRead;
 			if (entry.activeEvents != oactive)
 				this->haveEvent_.insert(entry.fd);
@@ -177,8 +177,8 @@ extern "C" {
 int rasheeq_poller_add(rasheeq_poller_t* poller, int fd, rasheeq_readready_callback onreadready, rasheeq_writeready_callback onwriteready, rasheeq_erroroccured_callback onerror, void* user_arg) {
 	R::Poller* p = reinterpret_cast<R::Poller*>(poller);
 	if (onerror != NULL)
-		return (p->add(fd, reinterpret_cast<int(*)(R::Poller*, int, void*)>(onreadready), reinterpret_cast<int(*)(R::Poller*, int, void*)>(onwriteready), reinterpret_cast<void(*)(R::Poller*, int, void*)>(onerror), user_arg)) ? 1 : 0;
-	return (p->add(fd, reinterpret_cast<int(*)(R::Poller*, int, void*)>(onreadready), reinterpret_cast<int(*)(R::Poller*, int, void*)>(onwriteready), user_arg)) ? 1 : 0;
+		return (p->add(fd, reinterpret_cast<int(*)(R::Poller&, int, void*)>(onreadready), reinterpret_cast<int(*)(R::Poller&, int, void*)>(onwriteready), reinterpret_cast<void(*)(R::Poller&, int, void*)>(onerror), user_arg)) ? 1 : 0;
+	return (p->add(fd, reinterpret_cast<int(*)(R::Poller&, int, void*)>(onreadready), reinterpret_cast<int(*)(R::Poller&, int, void*)>(onwriteready), user_arg)) ? 1 : 0;
 };
 
 rasheeq_poller_t* rasheeq_poller_create() {

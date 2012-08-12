@@ -18,9 +18,9 @@ class Poller {
 			peWrite = 0x02,
 			peError = 0x04
 		}; //enum Events
-		typedef std::function<bool(Poller* sender, int, void*)> ReadReady;
-		typedef std::function<bool(Poller* sender, int, void*)> WriteReady;
-		typedef std::function<void(Poller* sender, int, void*)> ErrorOccurred;
+		typedef std::function<bool(Poller& sender, int, void*)> ReadReady;
+		typedef std::function<bool(Poller& sender, int, void*)> WriteReady;
+		typedef std::function<void(Poller& sender, int, void*)> ErrorOccurred;
 	protected:
 		struct Entry {
 			int fd;
