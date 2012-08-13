@@ -5,6 +5,7 @@
 
 #include <list>
 #include <string>
+#include <functional>
 
 namespace R {
 
@@ -25,7 +26,7 @@ class StreamClient {
 		typedef std::function<void(StreamClient& client, std::string& data, size_t& offset, size_t& size)> ReceivedData;
 		typedef std::function<void(StreamClient& client, std::string& outBuffer)> WriteDataReady;
 	public:
-		static size_t bufferSize;
+		static size_t ioBufferSize;
 	protected:
 		std::string inBuf_;
 		int fd_;

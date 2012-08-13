@@ -10,7 +10,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-size_t R::StreamClient::bufferSize = 0x1000;
+size_t R::StreamClient::ioBufferSize = 0x1000;
 
 R::StreamClient::StreamClient(PollerPool& pool, StreamServer& server, int fd):
 	inBuf_(),
@@ -117,8 +117,8 @@ void R::StreamClient::disconnect() {
 bool R::StreamClient::send(const std::string& data) {
 	this->outBuf_.append(data);
 	size_t size = this->outBuf_.size();
-	if (size > R::StreamClient::bufferSize)
-		size = R::StreamClient::bufferSize;
+	if (size > R::StreamClient::ioBufferSize)
+		size = R::StreamClient::ioBufferSize;
 	ssize_t res = ::send(this->fd_, this->outBuf_.data(), size, 0);
 	if (res == -1) {
 		if ((errno == EWOULDBLOCK) || (errno == EAGAIN) || (errno == EINTR)) {
@@ -161,8 +161,8 @@ void R::StreamClient::onWriteDataReady(const WriteDataReady& callback) {
 
 bool R::StreamClient::onReadReady_(Poller& poller, int fd, void* arg) {
 	StreamClient* client = reinterpret_cast<StreamClient*>(arg);
-	char buf[R::StreamClient::bufferSize];
-	ssize_t res = ::recv(client->fd_, buf, R::StreamClient::bufferSize, 0);
+	char buf[R::StreamClient::ioBufferSize];
+	ssize_t res = ::recv(client->fd_, buf, R::StreamClient::ioBufferSize, 0);
 	if (res == -1) {
 		if ((errno == EWOULDBLOCK) || (errno == EAGAIN) || (errno == EINTR)) {
 			return true;
@@ -202,8 +202,8 @@ bool R::StreamClient::onWriteReady_(Poller& poller, int fd, void* arg) {
 		return true;
 
 	size_t size = client->outBuf_.size();
-	if (size > R::StreamClient::bufferSize)
-		size = R::StreamClient::bufferSize;
+	if (size > R::StreamClient::ioBufferSize)
+		size = R::StreamClient::ioBufferSize;
 	ssize_t res = ::send(client->fd_, client->outBuf_.data(), size, 0);
 	if (res == -1) {
 		if ((errno == EWOULDBLOCK) || (errno == EAGAIN) || (errno == EINTR)) {
