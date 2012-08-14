@@ -1,4 +1,5 @@
 set(SRC
+	Net.cpp
 	Poller.cpp
 	PollerPool.cpp
 	StreamClient.cpp
