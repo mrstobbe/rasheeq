@@ -14,6 +14,7 @@ R::StreamServer::StreamServer(R::PollerPool& pool):
 	clients_(),
 	fd_(-1),
 	greedy_(false),
+	listenAddr_(),
 	poller_(NULL),
 	pool_(&pool),
 	reapReady_(),
@@ -28,6 +29,7 @@ R::StreamServer::StreamServer(StreamServer&& move):
 	clients_(std::move(move.clients_)),
 	fd_(move.fd_),
 	greedy_(move.greedy_),
+	listenAddr_(std::move(move.listenAddr_)),
 	poller_(move.poller_),
 	pool_(move.pool_),
 	reapReady_(std::move(move.reapReady_)),
@@ -56,43 +58,16 @@ R::StreamServer::~StreamServer() {
 	}
 };
 
-void R::StreamServer::listen(const unsigned int port) {
-	::sockaddr_in addr = {
-			sin_family: AF_INET,
-			sin_port: htons(port),
-			sin_addr: { s_addr: 0 }
-		};
-	this->bind_(&addr, sizeof(addr));
+void R::StreamServer::listen(const Net::StreamAddr& address) {
+	this->bind_(address);
+	this->listenAddr_ = address;
 	this->listen_();
 };
 
-void R::StreamServer::listen(const bool ip6, const unsigned int port) {
-	if (ip6) {
-		::sockaddr_in6 addr = {
-				sin6_family: AF_INET6,
-				sin6_port: htons(port),
-				sin6_flowinfo: 0,
-				sin6_addr: IN6ADDR_ANY_INIT,
-				sin6_scope_id: 0
-			};
-		this->bind_(&addr, sizeof(addr));
-	} else {
-		::sockaddr_in addr = {
-				sin_family: AF_INET,
-				sin_port: htons(port),
-				sin_addr: { s_addr: 0 }
-			};
-		this->bind_(&addr, sizeof(addr));
-	}
-	this->listen_();
-};
-
-void R::StreamServer::listen(const std::string& interface, const unsigned int port) {
-	#warning Not implemented
-};
-
-void R::StreamServer::listen(const std::string& interface) {
-	#warning Not implemented
+void R::StreamServer::listen(const Net::StreamAddr& address, const int backlog) {
+	this->bind_(address);
+	this->listenAddr_ = address;
+	this->listen_(backlog);
 };
 
 void R::StreamServer::onClientConnect(const ClientConnected& callback) {
@@ -109,9 +84,8 @@ void R::StreamServer::onDestruct(const Destructing& callback) {
 
 #include <cstdio>
 
-void R::StreamServer::bind_(void* addr, const size_t addrSize) {
-	//#TODO: Support AF_INET6, AF_UNIX, and IPPROTO_SCTP here
-	this->fd_ = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+void R::StreamServer::bind_(const Net::StreamAddr& address) {
+	this->fd_ = ::socket(address.nativeAddrFamily(), address.nativeDomain(), address.nativeProtocol());
 	if (this->fd_ == -1) {
 		perror("socket()");
 		return;
@@ -130,7 +104,7 @@ void R::StreamServer::bind_(void* addr, const size_t addrSize) {
 		perror("setsockopt(SO_REUSEADDR)");
 		return;
 	}
-	if (::bind(this->fd_, reinterpret_cast<const sockaddr*>(addr), addrSize) == -1) {
+	if (::bind(this->fd_, reinterpret_cast<const sockaddr*>((void*)address), (size_t)address) == -1) {
 		perror("bind()");
 		return;
 	}

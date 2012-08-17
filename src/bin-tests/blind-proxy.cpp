@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
 	server.onDestruct([](R::StreamServer& server) {
 			cout << "Server shutdown" << endl;
 		});
-	server.listen(12345);
+	server.listen("tcp://[*]:12345");
 	::signal(SIGINT, sigHandler);
 	::signal(SIGTERM, sigHandler);
 	while (okay) {

@@ -21,6 +21,7 @@ class StreamServer {
 		std::unordered_set<StreamClient*> clients_;
 		int fd_;
 		bool greedy_;
+		Net::StreamAddr listenAddr_;
 		Poller* poller_;
 		PollerPool* pool_;
 		std::unordered_set<StreamClient*> reapReady_;
@@ -34,16 +35,16 @@ class StreamServer {
 		StreamServer(StreamServer&& move);
 		~StreamServer();
 	public:
-		void listen(const unsigned int port);
-		void listen(const bool ip6, const unsigned int port);
-		void listen(const std::string& interface, const unsigned int port);
-		void listen(const std::string& interface);
+		void listen(const Net::StreamAddr& address);
+		void listen(const Net::StreamAddr& address, const int backlog);
+		template<typename...Args>
+		void listen(Args...args) { this->listen(Net::StreamAddr(args...)); };
 	public:
 		void onClientConnect(const ClientConnected& callback);
 		void onClientDisconnect(const ClientDisconnected& callback);
 		void onDestruct(const Destructing& callback);
 	private:
-		void bind_(void* addr, const size_t addrSize);
+		void bind_(const Net::StreamAddr& address);
 		void listen_();
 		void listen_(const int backlog);
 		void clientDisconnected_(StreamClient& client);

@@ -95,10 +95,8 @@ void R::StreamClient::userData(void* value) {
 };
 
 
-bool R::StreamClient::flush() {
-	if (this->outBuf_.size() == 0)
-		return true;
-	return this->send(std::string());
+void R::StreamClient::connect(const Net::StreamAddr& address) {
+	#warning Stubbed
 };
 
 void R::StreamClient::disconnect() {
@@ -112,6 +110,12 @@ void R::StreamClient::disconnect() {
 		if (this->server_ != NULL)
 			this->server_->clientDisconnected_(*this);
 	}
+};
+
+bool R::StreamClient::flush() {
+	if (this->outBuf_.size() == 0)
+		return true;
+	return this->send(std::string());
 };
 
 bool R::StreamClient::send(const std::string& data) {

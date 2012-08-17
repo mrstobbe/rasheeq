@@ -56,8 +56,11 @@ class StreamClient {
 		void* userData() const;
 		void userData(void* value);
 	public:
-		bool flush();
+		void connect(const Net::StreamAddr& address);
+		template<typename...Args>
+		void connect(Args...args) { this->connect(Net::StreamAddr(args...)); };
 		void disconnect();
+		bool flush();
 		bool send(const std::string& data);
 	public:
 		void onConnect(const Connected& callback);
