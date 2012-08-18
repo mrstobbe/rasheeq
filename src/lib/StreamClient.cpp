@@ -29,7 +29,7 @@ R::StreamClient::StreamClient(PollerPool& pool, StreamServer& server, int fd):
 {
 	int v = ::fcntl(this->fd_, F_GETFL, 0);
 	::fcntl(this->fd_, F_SETFL, v | O_NONBLOCK);
-	this->poller_ = pool.add(this->fd_, onReadReady_, onWriteReady_, onError_, this);
+	this->poller_ = &pool.add(this->fd_, onReadReady_, onWriteReady_, onError_, this);
 };
 
 R::StreamClient::StreamClient(StreamClient&& move):

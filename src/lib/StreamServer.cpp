@@ -108,7 +108,7 @@ void R::StreamServer::bind_(const Net::StreamAddr& address) {
 		perror("bind()");
 		return;
 	}
-	this->poller_ = this->pool_->add(this->fd_, onReadReady_, onWriteReady_, this);
+	this->poller_ = &this->pool_->add(this->fd_, onReadReady_, onWriteReady_, this);
 };
 
 void R::StreamServer::listen_() {

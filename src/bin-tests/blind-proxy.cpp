@@ -13,7 +13,7 @@ static void sigHandler(int signo) { okay = false; };
 
 int main(int argc, char** argv) {
 	R::PollerPool pool;
-	R::Poller& poller = *pool.createPoller(50);
+	R::Poller& poller = pool.createPoller(50);
 	R::StreamServer server(pool);
 	server.onClientConnect([](R::StreamServer& server, R::StreamClient& client) {
 			cout << "Client connected" << endl;
