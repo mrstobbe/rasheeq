@@ -35,6 +35,10 @@ class StreamServer {
 		StreamServer(StreamServer&& move);
 		~StreamServer();
 	public:
+		Net::StreamAddr const& listenAddr() const;
+		R::Poller* poller() const;
+		R::PollerPool& pollerPool() const;
+	public:
 		void listen(const Net::StreamAddr& address);
 		void listen(const Net::StreamAddr& address, const int backlog);
 		template<typename...Args>

@@ -17,14 +17,14 @@ class PollerPool {
 		PollerPool(const int timeout);
 		~PollerPool();
 	public:
-		Poller& add(int fd, Poller::ReadReady onReadReady, Poller::WriteReady onWriteReady);
-		Poller& add(int fd, Poller::ReadReady onReadReady, Poller::WriteReady onWriteReady, Poller::ErrorOccurred onError);
-		Poller& add(int fd, Poller::ReadReady onReadReady, Poller::WriteReady onWriteReady, void* userArg);
-		Poller& add(int fd, Poller::ReadReady onReadReady, Poller::WriteReady onWriteReady, Poller::ErrorOccurred onError, void* userArg);
+		Poller& add(int fd, Poller::Added onAdded, Poller::ReadReady onReadReady, Poller::WriteReady onWriteReady);
+		Poller& add(int fd, Poller::Added onAdded, Poller::ReadReady onReadReady, Poller::WriteReady onWriteReady, Poller::ErrorOccurred onError);
+		Poller& add(int fd, Poller::Added onAdded, Poller::ReadReady onReadReady, Poller::WriteReady onWriteReady, void* userArg);
+		Poller& add(int fd, Poller::Added onAdded, Poller::ReadReady onReadReady, Poller::WriteReady onWriteReady, Poller::ErrorOccurred onError, void* userArg);
 		Poller& createPoller();
 		Poller& createPoller(const int timeout);
 	private:
-		Poller& add(int fd, Poller::ReadReady& onReadReady, Poller::WriteReady& onWriteReady, Poller::ErrorOccurred* onError, void* userArg);
+		Poller& add(int fd, Poller::Added& onAdded, Poller::ReadReady& onReadReady, Poller::WriteReady& onWriteReady, Poller::ErrorOccurred* onError, void* userArg);
 	private:
 		PollerPool(const PollerPool& copy) { };
 		PollerPool& operator =(const PollerPool& copy) { return *this; };

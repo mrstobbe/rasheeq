@@ -44,12 +44,15 @@ enum AddressFamily {
 
 class DatagramAddr {
 	protected:
-		void* addr_;
-		size_t addrSize_;
+		std::string address_;
 		AddressFamily family_;
+		void* nativeAddr_;
+		size_t nativeAddrSize_;
+		int port_;
 		DatagramProtocol protocol_;
 	public:
 		DatagramAddr();
+		DatagramAddr(const DatagramProtocol protocol, void* nativeAddress);
 		DatagramAddr(const std::string& address);
 		DatagramAddr(const std::string& address, const int port);
 		DatagramAddr(const int port);
@@ -62,9 +65,14 @@ class DatagramAddr {
 		operator size_t() const;
 		operator void*() const;
 	public:
+		std::string address() const;
+		AddressFamily family() const;
 		int nativeAddrFamily() const;
 		int nativeDomain() const;
 		int nativeProtocol() const;
+		int port() const;
+		DatagramProtocol protocol() const;
+	public:
 		void parse(const std::string& address);
 		void parse(const std::string& address, const int port);
 		void parse(const int port);
@@ -73,12 +81,15 @@ class DatagramAddr {
 
 class StreamAddr {
 	protected:
-		void* addr_;
-		size_t addrSize_;
+		std::string address_;
 		AddressFamily family_;
+		void* nativeAddr_;
+		size_t nativeAddrSize_;
+		int port_;
 		StreamProtocol protocol_;
 	public:
 		StreamAddr();
+		StreamAddr(const StreamProtocol protocol, void* nativeAddress);
 		StreamAddr(const std::string& address);
 		StreamAddr(const std::string& address, const int port);
 		StreamAddr(const int port);
@@ -89,11 +100,18 @@ class StreamAddr {
 		StreamAddr& operator =(StreamAddr&& move);
 		StreamAddr& operator =(const std::string& address);
 		operator size_t() const;
+		operator std::string() const;
 		operator void*() const;
 	public:
+		std::string address() const;
+		AddressFamily family() const;
+		std::string identity() const;
 		int nativeAddrFamily() const;
 		int nativeDomain() const;
 		int nativeProtocol() const;
+		int port() const;
+		StreamProtocol protocol() const;
+	public:
 		void parse(const std::string& address);
 		void parse(const std::string& address, const int port);
 		void parse(const int port);

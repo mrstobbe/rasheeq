@@ -61,36 +61,28 @@ void R::Poller::timeout(const int value) {
 	this->timeout_ = value;
 };
 
-bool R::Poller::add(int fd, ReadReady onReadReady, WriteReady onWriteReady) {
+bool R::Poller::add(int fd, Added onAdded, ReadReady onReadReady, WriteReady onWriteReady) {
 	//#TODO: Sanity check -1
-	return this->add(fd, onReadReady, onWriteReady, NULL, NULL);
+	return this->add(fd, onAdded, onReadReady, onWriteReady, NULL, NULL);
 };
 
-bool R::Poller::add(int fd, ReadReady onReadReady, WriteReady onWriteReady, ErrorOccurred onError) {
+bool R::Poller::add(int fd, Added onAdded, ReadReady onReadReady, WriteReady onWriteReady, ErrorOccurred onError) {
 	//#TODO: Sanity check -1
-	return this->add(fd, onReadReady, onWriteReady, &onError, NULL);
+	return this->add(fd, onAdded, onReadReady, onWriteReady, &onError, NULL);
 };
 
-bool R::Poller::add(int fd, ReadReady onReadReady, WriteReady onWriteReady, void* userArg) {
+bool R::Poller::add(int fd, Added onAdded, ReadReady onReadReady, WriteReady onWriteReady, void* userArg) {
 	//#TODO: Sanity check -1
-	return this->add(fd, onReadReady, onWriteReady, NULL, userArg);
+	return this->add(fd, onAdded, onReadReady, onWriteReady, NULL, userArg);
 };
 
-bool R::Poller::add(int fd, ReadReady onReadReady, WriteReady onWriteReady, ErrorOccurred onError, void* userArg) {
+bool R::Poller::add(int fd, Added onAdded, ReadReady onReadReady, WriteReady onWriteReady, ErrorOccurred onError, void* userArg) {
 	//#TODO: Sanity check -1
-	return this->add(fd, onReadReady, onWriteReady, &onError, userArg);
+	return this->add(fd, onAdded, onReadReady, onWriteReady, &onError, userArg);
 };
 
 void R::Poller::poll(const int timeout) {
 	this->polling_ = true;
-	if (this->reapReady_.size() != 0) {
-		for (auto it = this->reapReady_.begin(); it != this->reapReady_.end(); ++it) {
-			this->haveEvent_.erase(*it);
-			this->entries_.erase(*it);
-		}
-		this->reapReady_.clear();
-	}
-
 	if (this->addReady_.size() != 0) {
 		for (auto it = this->addReady_.begin(); it != this->addReady_.end(); ++it) {
 			this->entries_[it->first] = it->second;
@@ -106,6 +98,7 @@ void R::Poller::poll(const int timeout) {
 				if (::epoll_ctl(this->efd_, EPOLL_CTL_ADD, it->first, &ep_event) == -1)
 					perror("epoll_ctl()");
 			#endif /* RASHEEQ_HAVE_EPOLL */
+			it->second.onAdded(*this, it->first, it->second.userArg);
 		}
 		this->addReady_.clear();
 	}
@@ -157,13 +150,19 @@ void R::Poller::poll(const int timeout) {
 		//#TODO: kpoll/win32 api/fallback on select(), etc
 	#endif /* RASHEEQ_HAVE_EPOLL */
 	this->polling_ = false;
+
+	if (this->reapReady_.size() != 0) {
+		for (auto it = this->reapReady_.begin(); it != this->reapReady_.end(); ++it) {
+			this->haveEvent_.erase(*it);
+			this->entries_.erase(*it);
+		}
+		this->reapReady_.clear();
+	}
 };
 
 bool R::Poller::remove(int fd) {
 	auto it = this->entries_.find(fd);
-	if (it == this->entries_.end())
-		return false;
-	if (this->reapReady_.find(fd) != this->reapReady_.end())
+	if ((it == this->entries_.end()) || (this->reapReady_.find(fd) != this->reapReady_.end()))
 		return false;
 	::close(fd);
 	if (this->polling_) {
@@ -176,9 +175,11 @@ bool R::Poller::remove(int fd) {
 };
 
 
-bool R::Poller::add(int fd, ReadReady& onReadReady, WriteReady& onWriteReady, ErrorOccurred* onError, void* userArg) {
+bool R::Poller::add(int fd, Added& onAdded, ReadReady& onReadReady, WriteReady& onWriteReady, ErrorOccurred* onError, void* userArg) {
+	/*
 	if ((this->entries_.find(fd) != this->entries_.end()) || (this->addReady_.find(fd) != this->addReady_.end()))
 		return false;
+	*/
 	int events = peRead | peWrite;
 	if (onError != NULL)
 		events |= peError;
@@ -186,6 +187,7 @@ bool R::Poller::add(int fd, ReadReady& onReadReady, WriteReady& onWriteReady, Er
 	entry.fd = fd;
 	entry.events = events;
 	entry.activeEvents = 0;
+	entry.onAdded = onAdded;
 	entry.onRead = onReadReady;
 	entry.onWrite = onWriteReady;
 	entry.onError = (onError != NULL) ? *onError : ErrorOccurred();
@@ -196,11 +198,11 @@ bool R::Poller::add(int fd, ReadReady& onReadReady, WriteReady& onWriteReady, Er
 
 extern "C" {
 
-int rasheeq_poller_add(rasheeq_poller_t* poller, int fd, rasheeq_readready_callback onreadready, rasheeq_writeready_callback onwriteready, rasheeq_erroroccured_callback onerror, void* user_arg) {
+int rasheeq_poller_add(rasheeq_poller_t* poller, int fd, rasheeq_added_callback onadded, rasheeq_readready_callback onreadready, rasheeq_writeready_callback onwriteready, rasheeq_erroroccured_callback onerror, void* user_arg) {
 	R::Poller* p = reinterpret_cast<R::Poller*>(poller);
 	if (onerror != NULL)
-		return (p->add(fd, reinterpret_cast<int(*)(R::Poller&, int, void*)>(onreadready), reinterpret_cast<int(*)(R::Poller&, int, void*)>(onwriteready), reinterpret_cast<void(*)(R::Poller&, int, void*)>(onerror), user_arg)) ? 1 : 0;
-	return (p->add(fd, reinterpret_cast<int(*)(R::Poller&, int, void*)>(onreadready), reinterpret_cast<int(*)(R::Poller&, int, void*)>(onwriteready), user_arg)) ? 1 : 0;
+		return (p->add(fd, reinterpret_cast<void(*)(R::Poller&, int, void*)>(onadded), reinterpret_cast<int(*)(R::Poller&, int, void*)>(onreadready), reinterpret_cast<int(*)(R::Poller&, int, void*)>(onwriteready), reinterpret_cast<void(*)(R::Poller&, int, void*)>(onerror), user_arg)) ? 1 : 0;
+	return (p->add(fd, reinterpret_cast<void(*)(R::Poller&, int, void*)>(onadded), reinterpret_cast<int(*)(R::Poller&, int, void*)>(onreadready), reinterpret_cast<int(*)(R::Poller&, int, void*)>(onwriteready), user_arg)) ? 1 : 0;
 };
 
 rasheeq_poller_t* rasheeq_poller_create() {

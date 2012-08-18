@@ -27,7 +27,7 @@ static bool readReady(R::Poller& poller, int sock, void* userArg) {
 		cout << inet_ntoa(paddr.sin_addr) << " connected." << endl;
 		int v = fcntl(cli, F_GETFL, 0);
 		fcntl(cli, F_SETFL, v | O_NONBLOCK);
-		poller.add(cli, readReady, writeReady, errorOccured, userArg);
+		poller.add(cli, [](R::Poller& sender, int fd, void* arg) { }, readReady, writeReady, errorOccured, userArg);
 	} else {
 		char buf[512];
 		int res = recv(sock, buf, 512, 0);
@@ -89,7 +89,7 @@ int main(int argc, char** argv) {
 		perror("listen()");
 		return 1;
 	}
-	poller.add(listener, readReady, writeReady, &listener);
+	poller.add(listener, [](R::Poller& poller, int fd, void* arg) { }, readReady, writeReady, &listener);
 	while (true) {
 		poller.poll();
 	}

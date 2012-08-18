@@ -50,7 +50,7 @@ R::StreamServer::~StreamServer() {
 		}
 
 		for (auto it = this->clients_.begin(); it != this->clients_.end(); it = this->clients_.begin())
-			(*it)->disconnect();
+			(*it)->close();
 		for (auto it = this->onDestruct_.begin(); it != this->onDestruct_.end(); ++it)
 			(*it)(*this);
 		this->poller_->remove(this->fd_);
@@ -58,15 +58,25 @@ R::StreamServer::~StreamServer() {
 	}
 };
 
+R::Net::StreamAddr const& R::StreamServer::listenAddr() const {
+	return this->listenAddr_;
+};
+
+R::Poller* R::StreamServer::poller() const {
+	return this->poller_;
+};
+
+R::PollerPool& R::StreamServer::pollerPool() const {
+	return *this->pool_;
+};
+
 void R::StreamServer::listen(const Net::StreamAddr& address) {
 	this->bind_(address);
-	this->listenAddr_ = address;
 	this->listen_();
 };
 
 void R::StreamServer::listen(const Net::StreamAddr& address, const int backlog) {
 	this->bind_(address);
-	this->listenAddr_ = address;
 	this->listen_(backlog);
 };
 
@@ -104,11 +114,19 @@ void R::StreamServer::bind_(const Net::StreamAddr& address) {
 		perror("setsockopt(SO_REUSEADDR)");
 		return;
 	}
-	if (::bind(this->fd_, reinterpret_cast<const sockaddr*>((void*)address), (size_t)address) == -1) {
+	size_t asize = (size_t)address;
+	if (::bind(this->fd_, reinterpret_cast< const ::sockaddr* >((void*)address), asize) == -1) {
 		perror("bind()");
 		return;
 	}
-	this->poller_ = &this->pool_->add(this->fd_, onReadReady_, onWriteReady_, this);
+	char abuf[asize];
+	socklen_t l = asize;
+	if (::getsockname(this->fd_, reinterpret_cast< ::sockaddr* >(abuf), &l) == -1) {
+		perror("getsockname()");
+		return;
+	}
+	this->listenAddr_ = Net::StreamAddr(address.protocol(),abuf);
+	this->poller_ = &this->pool_->add(this->fd_, [](Poller& sender, int fd, void* arg) { }, onReadReady_, onWriteReady_, this);
 };
 
 void R::StreamServer::listen_() {
@@ -153,6 +171,7 @@ bool R::StreamServer::onReadReady_(Poller& poller, int fd, void* arg) {
 		server->clients_.insert(client);
 		for (auto it = server->onClientConnect_.begin(); it != server->onClientConnect_.end(); ++it)
 			(*it)(*server, *client);
+		//client->onWriteReady_(*client->poller_, client->fd_, client);
 		if (!server->greedy_)
 			break;
 	}

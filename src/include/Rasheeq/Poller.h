@@ -18,6 +18,7 @@ class Poller {
 			peWrite = 0x02,
 			peError = 0x04
 		}; //enum Events
+		typedef std::function<void(Poller& sender, int, void*)> Added;
 		typedef std::function<bool(Poller& sender, int, void*)> ReadReady;
 		typedef std::function<bool(Poller& sender, int, void*)> WriteReady;
 		typedef std::function<void(Poller& sender, int, void*)> ErrorOccurred;
@@ -26,6 +27,7 @@ class Poller {
 			int fd;
 			int events;
 			int activeEvents;
+			Added onAdded;
 			ReadReady onRead;
 			WriteReady onWrite;
 			ErrorOccurred onError;
@@ -49,15 +51,15 @@ class Poller {
 		int timeout() const;
 		void timeout(const int value);
 	public:
-		bool add(int fd, ReadReady onReadReady, WriteReady onWriteReady);
-		bool add(int fd, ReadReady onReadReady, WriteReady onWriteReady, ErrorOccurred onError);
-		bool add(int fd, ReadReady onReadReady, WriteReady onWriteReady, void* userArg);
-		bool add(int fd, ReadReady onReadReady, WriteReady onWriteReady, ErrorOccurred onError, void* userArg);
+		bool add(int fd, Added onAdded, ReadReady onReadReady, WriteReady onWriteReady);
+		bool add(int fd, Added onAdded, ReadReady onReadReady, WriteReady onWriteReady, ErrorOccurred onError);
+		bool add(int fd, Added onAdded, ReadReady onReadReady, WriteReady onWriteReady, void* userArg);
+		bool add(int fd, Added onAdded, ReadReady onReadReady, WriteReady onWriteReady, ErrorOccurred onError, void* userArg);
 		inline void poll() { this->poll(this->timeout_); };
 		void poll(const int timeout);
 		bool remove(int fd);
 	private:
-		bool add(int fd, ReadReady& onReadReady, WriteReady& onWriteReady, ErrorOccurred* onError, void* userArg);
+		bool add(int fd, Added& onAdded, ReadReady& onReadReady, WriteReady& onWriteReady, ErrorOccurred* onError, void* userArg);
 }; //class Poller
 
 }; //ns R
@@ -67,11 +69,12 @@ extern "C" {
 
 typedef struct rasheeq_poller { } rasheeq_poller_t;
 
+typedef void(*rasheeq_added_callback)(rasheeq_poller_t* poller, int fd, void* user_arg);
 typedef int(*rasheeq_readready_callback)(rasheeq_poller_t* poller, int fd, void* user_arg);
 typedef int(*rasheeq_writeready_callback)(rasheeq_poller_t* poller, int fd, void* user_arg);
 typedef void(*rasheeq_erroroccured_callback)(rasheeq_poller_t* poller, int fd, void* user_arg);
 
-int rasheeq_poller_add(rasheeq_poller_t* poller, int fd, rasheeq_readready_callback onreadready, rasheeq_writeready_callback onwriteready, rasheeq_erroroccured_callback onerror, void* user_arg);
+int rasheeq_poller_add(rasheeq_poller_t* poller, int fd, rasheeq_added_callback onadded, rasheeq_readready_callback onreadready, rasheeq_writeready_callback onwriteready, rasheeq_erroroccured_callback onerror, void* user_arg);
 rasheeq_poller_t* poller_create();
 void rasheeq_poller_destroy(rasheeq_poller_t* poller);
 void rasheeq_poller_poll(rasheeq_poller_t* poller);
